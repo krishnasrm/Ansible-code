@@ -1,0 +1,29 @@
+---
+- name: Partition and format the new disk
+  parted:
+    device: "{{ disk_device }}"
+    number: 1
+    state: present
+    part_end: 100%
+  register: disk_partition
+
+- name: Create filesystem on the new partition
+  filesystem:
+    fstype: ext4
+    dev: "{{ disk_device }}1"
+
+- name: Mount the new filesystem
+  mount:
+    path: /data
+    src: "{{ disk_device }}1"
+    fstype: ext4
+    opts: defaults
+    state: mounted
+
+- name: Add entry to /etc/fstab
+  template:
+    src: fstab.j2
+    dest: /etc/fstab
+    validate: 'mount -v -t auto -O nofail {{ disk_device }}1 && mount -v {{ disk_device }}1'
+  notify:
+    - Reload fstab
